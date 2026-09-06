@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>VOXEL WARFARE: BLOCK OPS | 3D Voxel FPS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,400;0,600;0,700;1,700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <!-- 3D WebGL Canvas Container -->
+  <div id="game-container"></div>
+
+  <!-- Screen Damage & Vignette Overlays -->
+  <div id="damage-vignette"></div>
+  <div id="nuke-flash"></div>
+
+  <!-- Sniper Scope Overlay -->
+  <div id="sniper-scope">
+    <div class="scope-mask">
+      <div class="scope-lens">
+        <div class="scope-cross-h"></div>
+        <div class="scope-cross-v"></div>
+        <div class="scope-ring"></div>
+        <div class="scope-dot"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- IN-GAME HUD -->
+  <div id="hud-container" style="display: none;">
+    <!-- Top Objective & Wave Readout -->
+    <div id="top-bar">
+      <div id="objective-banner">WAVE 1 - ELIMINATE ALL HOSTILES</div>
+      <div id="match-info">
+        <span class="info-label">TIME:</span> <span id="match-timer-val">00:00</span>
+        <span class="info-label ml">SCORE:</span> <span id="total-score-val">0</span>
+      </div>
+    </div>
+
+    <!-- Top Compass -->
+    <div id="compass-wrapper">
+      <canvas id="compass-canvas" width="360" height="28"></canvas>
+    </div>
+
+    <!-- Top-Left Minimap & Killfeed -->
+    <div id="top-left-hud">
+      <div id="minimap-container">
+        <canvas id="minimap-canvas" width="140" height="140"></canvas>
+        <div class="minimap-grid-ring"></div>
+        <div class="minimap-label">SAT-COM RADAR</div>
+      </div>
+
+      <div id="killfeed-container"></div>
+    </div>
+
+    <!-- Center Reticle & Hitmarker -->
+    <div id="reticle-center">
+      <div id="crosshair">
+        <div class="crosshair-tick top"></div>
+        <div class="crosshair-tick bottom"></div>
+        <div class="crosshair-tick left"></div>
+        <div class="crosshair-tick right"></div>
+      </div>
+      <div id="hitmarker">
+        <div class="hm-line d1"></div>
+        <div class="hm-line d2"></div>
+      </div>
+    </div>
+
+    <!-- Center Floating Score Popups -->
+    <div id="score-popups"></div>
+
+    <!-- Right Killstreak System Tray -->
+    <div id="killstreaks-tray">
+      <div class="streak-header">
+        <span>STREAK</span>
+        <span id="streak-count-val" class="streak-val">0</span>
+      </div>
+
+      <div class="streak-slot" id="streak-nuke">
+        <div class="streak-key">[6]</div>
+        <div class="streak-details">
+          <div class="streak-name">TACTICAL NUKE</div>
+          <div class="streak-req">10 KILLS</div>
+        </div>
+      </div>
+
+      <div class="streak-slot" id="streak-chopper">
+        <div class="streak-key">[5]</div>
+        <div class="streak-details">
+          <div class="streak-name">ATTACK CHOPPER</div>
+          <div class="streak-req">7 KILLS</div>
+        </div>
+      </div>
+
+      <div class="streak-slot" id="streak-airstrike">
+        <div class="streak-key">[4]</div>
+        <div class="streak-details">
+          <div class="streak-name">MORTAR BARRAGE</div>
+          <div class="streak-req">5 KILLS</div>
+        </div>
+      </div>
+
+      <div class="streak-slot" id="streak-uav">
+        <div class="streak-key">[3]</div>
+        <div class="streak-details">
+          <div class="streak-name">UAV RECON</div>
+          <div class="streak-req">3 KILLS</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom-Left Health & Stance -->
+    <div id="bottom-left-hud">
+      <div class="health-block">
+        <div class="health-header">
+          <span class="hud-tag">HEALTH</span>
+          <span id="hp-text">100</span>
+        </div>
+        <div class="hp-bar-track">
+          <div id="hp-bar-fill"></div>
+        </div>
+      </div>
+
+      <div class="stamina-block">
+        <div class="stam-header">
+          <span class="hud-tag">STAMINA</span>
+        </div>
+        <div class="stam-bar-track">
+          <div id="stamina-bar-fill"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom-Right Ammo & Equipment -->
+    <div id="bottom-right-hud">
+      <div class="weapon-info-box">
+        <div class="weapon-title-row">
+          <span id="weapon-name">M4-VOX</span>
+          <span id="fire-mode" class="firemode-badge">AUTO</span>
+        </div>
+        <div class="ammo-digits-row">
+          <span id="ammo-count">30</span>
+          <span id="ammo-reserve">/ 90</span>
+        </div>
+      </div>
+
+      <div class="equipment-box">
+        <div class="equip-item">
+          <span class="equip-icon">💣</span>
+          <span id="grenade-count" class="equip-qty">x3</span>
+          <span class="equip-key">[G]</span>
+        </div>
+        <div class="equip-item">
+          <span class="equip-icon">🔪</span>
+          <span class="equip-key">[V]</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Respawn Countdown Overlay -->
+  <div id="respawn-screen" style="display: none;">
+    <div class="respawn-card">
+      <div class="respawn-title">YOU WERE ELIMINATED</div>
+      <div id="respawn-timer-text" class="respawn-timer">RESPAWNING IN 3...</div>
+    </div>
+  </div>
+
+  <!-- MAIN MENU -->
+  <div id="main-menu" class="menu-overlay">
+    <div class="menu-backdrop"></div>
+    <div class="menu-content">
+      <div class="menu-header">
+        <div class="title-sub">CALL OF VOXELS // ARCADE FPS</div>
+        <h1 class="game-title">VOXEL WARFARE<span class="title-accent">: BLOCK OPS</span></h1>
+      </div>
+
+      <!-- Mode Selector -->
+      <div class="mode-select-row">
+        <div class="mode-label">GAME MODE:</div>
+        <button class="mode-btn active" data-mode="wave">WAVE DEFENSE</button>
+        <button class="mode-btn" data-mode="tdm">TEAM DEATHMATCH</button>
+        <button class="mode-btn" data-mode="gungame">GUN GAME</button>
+      </div>
+
+      <!-- Map Selector -->
+      <div class="map-select-grid">
+        <div class="map-card active" data-map="blockment">
+          <div class="map-thumb map-blockment"></div>
+          <div class="map-info">
+            <div class="map-name">BLOCKMENT</div>
+            <div class="map-desc">High-speed CQB container yard with multi-tier flanks.</div>
+          </div>
+        </div>
+        <div class="map-card" data-map="crashsite">
+          <div class="map-thumb map-crash"></div>
+          <div class="map-info">
+            <div class="map-name">CRASH SITE</div>
+            <div class="map-desc">Urban warzone with 3-story hotel sniper nest & plaza.</div>
+          </div>
+        </div>
+        <div class="map-card" data-map="rustspire">
+          <div class="map-thumb map-rust"></div>
+          <div class="map-info">
+            <div class="map-name">RUST SPIRE</div>
+            <div class="map-desc">Industrial desert spire with oil pipelines & towers.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Difficulty Selector -->
+      <div class="difficulty-row">
+        <span class="diff-label">DIFFICULTY:</span>
+        <button class="diff-btn" data-diff="recruit">RECRUIT</button>
+        <button class="diff-btn active" data-diff="regular">REGULAR</button>
+        <button class="diff-btn" data-diff="hardened">HARDENED</button>
+        <button class="diff-btn" data-diff="veteran">VETERAN</button>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="menu-actions">
+        <button id="btn-play" class="btn-primary">DEPLOY TO ARENA</button>
+        <div class="secondary-btns">
+          <button id="btn-loadout" class="btn-secondary">GUNSMITH & LOADOUT</button>
+          <button id="btn-career" class="btn-secondary">CAREER RECORDS</button>
+          <button id="btn-settings" class="btn-secondary">SETTINGS</button>
+        </div>
+      </div>
+
+      <div class="controls-hint">
+        <span>WASD: Move</span> • <span>SHIFT: Sprint</span> • <span>SPACE: Jump</span> • <span>C: Crouch/Slide</span> • <span>R: Reload</span> • <span>Q / 1-2: Swap Weapon</span> • <span>G: Grenade</span> • <span>V: Melee</span> • <span>RMB: ADS Zoom</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOADOUT / GUNSMITH MODAL -->
+  <div id="loadout-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-box large">
+      <div class="modal-header">
+        <h2>CREATE-A-CLASS // GUNSMITH</h2>
+        <button class="btn-close-modal">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="loadout-columns">
+          <!-- Primary Weapon -->
+          <div class="loadout-col">
+            <h3>SELECT PRIMARY WEAPON</h3>
+            <div class="weapon-list">
+              <div class="weapon-select-card active" data-weapon="m4">
+                <div class="w-name">M4-VOX (ASSAULT RIFLE)</div>
+                <div class="w-stats">DMG: 34 | RPM: 650 | MAG: 30 | RANGE: MID</div>
+              </div>
+              <div class="weapon-select-card" data-weapon="vector">
+                <div class="w-name">MP-VECTOR (SMG)</div>
+                <div class="w-stats">DMG: 23 | RPM: 950 | MAG: 36 | RANGE: CQB</div>
+              </div>
+              <div class="weapon-select-card" data-weapon="striker">
+                <div class="w-name">STRIKER-12 (PUMP SHOTGUN)</div>
+                <div class="w-stats">DMG: 144 | RPM: 80 | MAG: 8 | SPREAD: 8-PELLET</div>
+              </div>
+              <div class="weapon-select-card" data-weapon="vox50">
+                <div class="w-name">VOX-50 (SNIPER RIFLE)</div>
+                <div class="w-stats">DMG: 120 | RPM: 42 | MAG: 5 | SCOPE: TACTICAL</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Camo & Perks -->
+          <div class="loadout-col">
+            <h3>WEAPON CAMOUFLAGE</h3>
+            <div class="camo-grid">
+              <button class="camo-btn active" data-camo="standard">STANDARD</button>
+              <button class="camo-btn" data-camo="desert">DESERT TAN (LVL 5)</button>
+              <button class="camo-btn" data-camo="arctic">ARCTIC SNOW (LVL 8)</button>
+              <button class="camo-btn" data-camo="digital">DIGITAL CAMO (LVL 10)</button>
+              <button class="camo-btn" data-camo="gold">PRESTIGE GOLD (LVL 14)</button>
+            </div>
+
+            <h3 class="mt">PERK 1 (SPEED & AMMO)</h3>
+            <div class="perk-row">
+              <button class="perk-btn-p1 active" data-perk="sleightOfHand">SLEIGHT OF HAND (FAST RELOAD)</button>
+              <button class="perk-btn-p1" data-perk="scavenger">SCAVENGER (RESUPPLY AMMO ON KILL)</button>
+            </div>
+
+            <h3 class="mt">PERK 2 (COMBAT POWER)</h3>
+            <div class="perk-row">
+              <button class="perk-btn-p2 active" data-perk="stoppingPower">STOPPING POWER (+25% DAMAGE)</button>
+              <button class="perk-btn-p2" data-perk="lightweight">LIGHTWEIGHT (+15% MOVE SPEED)</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-primary btn-close-modal">SAVE & RETURN</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CAREER STATS MODAL -->
+  <div id="career-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2>CAREER COMBAT RECORD</h2>
+        <button class="btn-close-modal">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="career-rank-banner">
+          <div class="rank-icon">🎖️</div>
+          <div class="rank-text">
+            <div id="career-rank" class="rank-title">PRIVATE I (LVL 1)</div>
+            <div class="rank-sub">COMBAT EFFECTIVENESS RATING: CLASSIFIED</div>
+          </div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-title">TOTAL KILLS</div>
+            <div id="career-total-kills" class="stat-num">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-title">TOTAL DEATHS</div>
+            <div id="career-total-deaths" class="stat-num">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-title">K / D RATIO</div>
+            <div id="career-kd" class="stat-num">0.00</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-title">HEADSHOTS</div>
+            <div id="career-headshots" class="stat-num">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-title">BEST KILLSTREAK</div>
+            <div id="career-best-streak" class="stat-num">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-title">HIGHEST WAVE</div>
+            <div id="career-best-wave" class="stat-num">1</div>
+          </div>
+          <div class="stat-card span2">
+            <div class="stat-title">HIGHEST MATCH SCORE</div>
+            <div id="career-best-score" class="stat-num">0</div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-primary btn-close-modal">CLOSE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SETTINGS MODAL -->
+  <div id="settings-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2>GAME SETTINGS</h2>
+        <button class="btn-close-modal">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="setting-item">
+          <label>MOUSE SENSITIVITY: <span id="setting-sens-val">0.0022</span></label>
+          <input type="range" id="setting-sens" min="0.0005" max="0.006" step="0.0001" value="0.0022" />
+        </div>
+
+        <div class="setting-item">
+          <label>FIELD OF VIEW (FOV): <span id="setting-fov-val">80</span>°</label>
+          <input type="range" id="setting-fov" min="70" max="110" step="1" value="80" />
+        </div>
+
+        <div class="setting-item">
+          <label>SFX VOLUME: <span id="setting-sfx-val">80%</span></label>
+          <input type="range" id="setting-sfx" min="0" max="1" step="0.05" value="0.8" />
+        </div>
+
+        <div class="setting-item">
+          <label>MUSIC VOLUME: <span id="setting-music-val">40%</span></label>
+          <input type="range" id="setting-music" min="0" max="1" step="0.05" value="0.4" />
+        </div>
+
+        <div class="setting-item checkbox">
+          <label>
+            <input type="checkbox" id="setting-inverty" />
+            INVERT Y-AXIS LOOK
+          </label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-primary btn-close-modal">APPLY SETTINGS</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAUSE MENU (ESC) -->
+  <div id="pause-menu" class="menu-overlay" style="display: none;">
+    <div class="pause-box">
+      <h2>TACTICAL PAUSE</h2>
+      <div class="pause-buttons">
+        <button id="btn-resume" class="btn-primary">RESUME MISSION</button>
+        <button id="btn-restart" class="btn-secondary">RESTART MATCH</button>
+        <button id="btn-quit" class="btn-secondary">ABORT TO MAIN MENU</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- GAME OVER / AFTER ACTION REPORT (AAR) -->
+  <div id="game-over-menu" class="menu-overlay" style="display: none;">
+    <div class="aar-card">
+      <div class="aar-header">
+        <div class="aar-title">AFTER ACTION REPORT</div>
+        <div class="aar-status">MISSION TERMINATED</div>
+      </div>
+
+      <div class="aar-rank-bar">
+        <div class="aar-rank-label">
+          <span id="aar-rank-name">PRIVATE I</span>
+          <span id="aar-level">LVL 1</span>
+        </div>
+        <div class="aar-xp-track">
+          <div id="aar-xp-bar-fill"></div>
+        </div>
+        <div id="aar-xp-text" class="aar-xp-sub">0 / 500 XP</div>
+      </div>
+
+      <div class="aar-stats-grid">
+        <div class="aar-stat">
+          <span class="lbl">FINAL SCORE</span>
+          <span id="aar-score" class="val">0</span>
+        </div>
+        <div class="aar-stat">
+          <span class="lbl">KILLS</span>
+          <span id="aar-kills" class="val">0</span>
+        </div>
+        <div class="aar-stat">
+          <span class="lbl">HEADSHOTS</span>
+          <span id="aar-headshots" class="val">0</span>
+        </div>
+        <div class="aar-stat">
+          <span class="lbl">HIGHEST STREAK</span>
+          <span id="aar-streak" class="val">0</span>
+        </div>
+        <div class="aar-stat span2">
+          <span class="lbl">WAVES CLEARED</span>
+          <span id="aar-wave" class="val">1</span>
+        </div>
+      </div>
+
+      <div class="aar-actions">
+        <button id="btn-play-again" class="btn-primary">PLAY AGAIN</button>
+        <button id="btn-aar-menu" class="btn-secondary">MAIN MENU</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOUCH CONTROLS FOR MOBILE / TABLETS -->
+  <div id="touch-controls-container" style="display: none;">
+    <!-- Left Joystick -->
+    <div id="touch-stick-zone">
+      <div id="touch-stick-base">
+        <div id="touch-stick-knob"></div>
+      </div>
+    </div>
+
+    <!-- Right Look Area -->
+    <div id="touch-look-zone"></div>
+
+    <!-- Touch Action Buttons -->
+    <div id="touch-actions">
+      <button id="btn-touch-fire" class="touch-btn fire-btn">FIRE</button>
+      <button id="btn-touch-ads" class="touch-btn">ADS</button>
+      <button id="btn-touch-reload" class="touch-btn small">R</button>
+      <button id="btn-touch-jump" class="touch-btn small">JUMP</button>
+      <button id="btn-touch-crouch" class="touch-btn small">CROUCH</button>
+      <button id="btn-touch-switch" class="touch-btn small">SWAP</button>
+      <button id="btn-touch-grenade" class="touch-btn small">G</button>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
